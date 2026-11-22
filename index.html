@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}html,body{margin:0;min-height:100%;background:#120c24}img{max-width:100%}</style>
+<title>ساحة الأسد والنمر</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Lalezar&display=swap">
+<style>
+/* Layout: one centered column. A boxing ring with two animated fighters on top, then three bet columns, chips and actions, then stats. A second tab holds the simulator. */
+:root {
+  --bg: #120c24;
+  --panel: #1c1337;
+  --panel-2: #2a1d4d;
+  --line: #3b2d68;
+  --ink: #f4effd;
+  --muted: #aa9dca;
+  --lion: #e4673b;
+  --tiger: #4b8df8;
+  --tie: #f2b632;
+  --good: #4ade80;
+  --bad: #f87171;
+  --display: 'Lalezar', 'Cairo', 'Segoe UI', sans-serif;
+  --body: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.6;
+  padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--tie); outline-offset: 2px; }
+
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 2.1rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+.badge { font-size: .8rem; font-weight: 700; letter-spacing: .02em; padding: 4px 12px; border-radius: 999px; background: var(--panel-2); color: var(--tie); border: 1px solid var(--line); }
+
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--panel); padding: 6px; border-radius: 14px; border: 1px solid var(--line); }
+.tab { border: 0; background: transparent; padding: 10px 12px; border-radius: 10px; font-weight: 700; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--panel-2); color: var(--ink); }
+
+.panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-width: 0; }
+
+.balance-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.label { font-size: .8rem; color: var(--muted); letter-spacing: .02em; }
+.num { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; display: inline-block; }
+.balance { font-family: var(--display); font-size: 2.2rem; line-height: 1.1; color: var(--tie); }
+.link-btn { background: none; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; font-size: .85rem; color: var(--muted); }
+
+/* ---------- ring and fighters ---------- */
+.ring-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.stage {
+  position: relative;
+  padding: 18px 8px 6px;
+  background:
+    radial-gradient(60% 55% at 12% 0%, rgba(124, 77, 255, .45), transparent 70%),
+    radial-gradient(60% 55% at 88% 0%, rgba(255, 77, 141, .35), transparent 70%),
+    linear-gradient(180deg, #24164f 0%, #3c2478 100%);
+}
+.stage::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 16%; height: 52%; opacity: .75;
+  background:
+    linear-gradient(#e11d48, #e11d48) 0 0 / 100% 4px no-repeat,
+    linear-gradient(#f4effd, #f4effd) 0 50% / 100% 4px no-repeat,
+    linear-gradient(#3b82f6, #3b82f6) 0 100% / 100% 4px no-repeat;
+}
+.stage::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 26%;
+  background: linear-gradient(180deg, #5a3aa6, #3a2370);
+}
+.arena { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 4px; direction: ltr; }
+.fighter { text-align: center; --d: 1; transition: transform .4s ease; }
+.fighter.tiger { --d: -1; }
+.fig { width: min(170px, 32vw); aspect-ratio: 200 / 210; margin: 0 auto; }
+.fighter.tiger .fig { transform: scaleX(-1); }
+.fig svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.fighter .name { font-weight: 700; margin-top: 2px; text-shadow: 0 1px 6px rgba(0, 0, 0, .7); }
+.center { text-align: center; min-width: 84px; align-self: center; padding-bottom: 20px; }
+.center .vs { font-family: var(--display); font-size: 1.9rem; line-height: 1.1; color: var(--muted); }
+.center .result { font-family: var(--display); font-size: 1.5rem; line-height: 1.2; text-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
+.timer { font-family: var(--display); font-size: 2.8rem; line-height: 1; color: var(--tie); text-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
+.timer.low { color: var(--bad); animation: pulse .5s ease-in-out infinite alternate; }
+.arena.fight .vs { color: var(--tie); animation: pulse .25s ease-in-out infinite alternate; }
+.arena.fight { animation: quake .22s linear infinite; }
+.barwrap { padding: 12px 16px 14px; }
+.bar { height: 8px; border-radius: 999px; background: var(--panel-2); overflow: hidden; direction: ltr; }
+.bar i { display: block; height: 100%; width: 100%; background: var(--tie); transition: width 1s linear; }
+
+/* face variants: only the ones matching the fighter's state are shown */
+.fx, .spk, .diz, .swt { display: none; }
+[data-s="idle"] .e-n, [data-s="idle"] .m-n,
+[data-s="fight"] .e-a, [data-s="fight"] .m-a,
+[data-s="tie"] .e-a, [data-s="tie"] .m-a,
+[data-s="win"] .e-h, [data-s="win"] .m-h,
+[data-s="lose"] .e-x, [data-s="lose"] .m-x { display: inline; }
+[data-s="win"] .spk { display: inline; animation: twinkle .45s ease-in-out infinite alternate; }
+[data-s="lose"] .diz { display: inline; animation: spin 1.1s linear infinite; transform-origin: 96px 28px; }
+[data-s="tie"] .swt { display: inline; animation: drip .8s ease-in infinite; }
+
+/* body poses */
+.rig { transform-origin: 100px 194px; animation: bob 1.4s ease-in-out infinite; }
+.fighter.tiger .rig { animation-delay: -.7s; }
+.head { transform-origin: 96px 90px; }
+.arm-f { transform-origin: 110px 118px; transform: rotate(-40deg); }
+.arm-b { transform-origin: 98px 112px; transform: rotate(-22deg); }
+
+[data-s="fight"] { animation: step .55s ease-in-out infinite alternate; }
+[data-s="fight"] .rig { animation: dance .28s ease-in-out infinite alternate; }
+[data-s="fight"] .arm-f { animation: jabF .6s ease-in-out infinite; }
+[data-s="fight"] .arm-b { animation: jabB .6s ease-in-out .3s infinite; }
+[data-s="fight"] .head { animation: nod .3s ease-in-out infinite alternate; }
+.fighter.tiger[data-s="fight"] { animation-delay: -.25s; }
+
+[data-s="win"] .rig { animation: jump .6s ease-in-out infinite; }
+[data-s="win"] .arm-f { transform: rotate(-85deg); animation: cheerF .45s ease-in-out infinite alternate; }
+[data-s="win"] .arm-b { transform: rotate(-110deg); animation: cheerB .45s ease-in-out .15s infinite alternate; }
+
+[data-s="lose"] .rig { transform: rotate(-16deg) translateY(10px); animation: wobble 1.2s ease-in-out infinite; }
+[data-s="lose"] .arm-f { transform: rotate(78deg); }
+[data-s="lose"] .arm-b { transform: rotate(66deg); }
+[data-s="lose"] .head { transform: rotate(12deg); }
+
+[data-s="tie"] { transform: translateX(calc(var(--d) * 26px)); }
+[data-s="tie"] .rig { animation: shake .12s linear infinite alternate; }
+[data-s="tie"] .arm-f { transform: rotate(-8deg); }
+[data-s="tie"] .arm-b { transform: rotate(-4deg); }
+
+@keyframes pulse { from { opacity: .5; } to { opacity: 1; } }
+@keyframes quake { 0% { transform: translate(0, 0); } 25% { transform: translate(2px, -1px); } 50% { transform: translate(-2px, 1px); } 75% { transform: translate(1px, 1px); } 100% { transform: translate(0, 0); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes dance { from { transform: translateY(0) rotate(0); } to { transform: translateY(-7px) rotate(-1.5deg); } }
+@keyframes step { from { transform: translateX(0); } to { transform: translateX(calc(var(--d) * 14px)); } }
+@keyframes jabF { 0%, 100% { transform: rotate(-40deg); } 30% { transform: rotate(4deg) translateX(30px); } 50% { transform: rotate(0deg) translateX(34px); } 72% { transform: rotate(-30deg); } }
+@keyframes jabB { 0%, 100% { transform: rotate(-22deg); } 30% { transform: rotate(6deg) translateX(26px); } 50% { transform: rotate(2deg) translateX(30px); } 72% { transform: rotate(-18deg); } }
+@keyframes nod { from { transform: rotate(-3deg); } to { transform: rotate(4deg) translateX(2px); } }
+@keyframes jump { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-16px); } }
+@keyframes cheerF { from { transform: rotate(-78deg); } to { transform: rotate(-100deg); } }
+@keyframes cheerB { from { transform: rotate(-104deg); } to { transform: rotate(-126deg); } }
+@keyframes wobble { 0%, 100% { transform: rotate(-14deg) translateY(10px); } 50% { transform: rotate(-19deg) translateY(10px); } }
+@keyframes shake { from { transform: translateX(-2px); } to { transform: translateX(2px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes twinkle { from { opacity: .25; } to { opacity: 1; } }
+@keyframes drip { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(18px); opacity: 0; } }
+
+.bets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; direction: ltr; }
+.bet { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 6px; border-radius: 14px; border: 2px solid var(--line); background: var(--panel); text-align: center; min-width: 0; }
+.bet .mult { font-family: var(--display); font-size: 1.7rem; line-height: 1.1; }
+.bet .who { font-weight: 700; }
+.bet .mine { font-size: .8rem; color: var(--muted); }
+.bet .amt { font-size: 1.15rem; font-weight: 700; }
+.bet[data-k="lion"] .mult { color: var(--lion); }
+.bet[data-k="tiger"] .mult { color: var(--tiger); }
+.bet[data-k="tie"] .mult { color: var(--tie); }
+.bet.has { background: var(--panel-2); }
+.bet[data-k="lion"].has { border-color: var(--lion); }
+.bet[data-k="tiger"].has { border-color: var(--tiger); }
+.bet[data-k="tie"].has { border-color: var(--tie); }
+.bet:disabled { opacity: .6; cursor: not-allowed; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { border: 2px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--tie); border-color: var(--tie); color: #1c1337; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { border: 2px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 10px 18px; font-weight: 700; }
+.btn.primary { background: var(--tie); border-color: var(--tie); color: #1c1337; flex: 1 1 160px; font-size: 1.05rem; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.msg { min-height: 3.2em; font-weight: 600; }
+.msg.good { color: var(--good); }
+.msg.bad { color: var(--bad); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.stat .v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pos { color: var(--good); }
+.neg { color: var(--bad); }
+.history { display: flex; flex-wrap: wrap; gap: 6px; direction: ltr; min-height: 32px; }
+.dot { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .85rem; color: #120c24; }
+.dot.lion { background: var(--lion); }
+.dot.tiger { background: var(--tiger); }
+.dot.tie { background: var(--tie); }
+.note { font-size: .85rem; color: var(--muted); margin: 0; }
+
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: end; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field select, .field input { font: inherit; background: var(--bg); color: var(--ink); border: 2px solid var(--line); border-radius: 10px; padding: 8px 10px; width: 100%; min-width: 0; }
+.chart-box { overflow-x: auto; }
+.chart { width: 100%; min-width: 440px; height: auto; display: block; direction: ltr; }
+.chart text { fill: var(--muted); font-size: 11px; font-family: var(--body); }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .start { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.chart .run { fill: none; stroke: #8f80c4; stroke-width: 1; opacity: .28; }
+.chart .avg { fill: none; stroke: var(--tie); stroke-width: 3; stroke-linejoin: round; }
+.verdict { font-size: 1.05rem; font-weight: 600; margin: 0; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 1.4rem; margin: 0 0 8px; }
+@media (prefers-reduced-motion: reduce) {
+  .arena, .rig, .head, .arm-f, .arm-b, .fighter, .spk, .diz, .swt, .timer, .vs { animation: none !important; }
+  .fighter, .bar i { transition: none; }
+}
+</style>
+
+<div class="wrap" dir="rtl" lang="ar">
+  <header>
+    <h1>ساحة الأسد والنمر</h1>
+    <span class="badge">عملات وهمية للتدريب فقط</span>
+  </header>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-play" aria-selected="true" aria-controls="panel-play">العب</button>
+    <button class="tab" role="tab" id="tab-sim" aria-selected="false" aria-controls="panel-sim">محاكاة آلاف الجولات</button>
+  </div>
+
+  <!-- PLAY -->
+  <section class="panel" id="panel-play" role="tabpanel" aria-labelledby="tab-play">
+    <div class="card balance-row">
+      <div>
+        <div class="label">رصيدك التدريبي</div>
+        <div class="balance"><span class="num" id="balance">10,000</span></div>
+      </div>
+      <button class="link-btn" id="reset">إعادة الرصيد إلى 10,000</button>
+    </div>
+
+    <div class="ring-card">
+      <div class="stage">
+        <div class="arena" id="arena">
+          <div class="fighter lion" id="f-lion" data-s="idle">
+            <div class="fig" id="face-lion"></div>
+            <div class="name">الأسد</div>
+          </div>
+          <div class="center">
+            <div class="timer" id="timer"><span class="num" id="tnum">10</span></div>
+            <div class="vs" id="vs" hidden>VS</div>
+            <div class="result" id="result"></div>
+          </div>
+          <div class="fighter tiger" id="f-tiger" data-s="idle">
+            <div class="fig" id="face-tiger"></div>
+            <div class="name">النمر</div>
+          </div>
+        </div>
+      </div>
+      <div class="barwrap" aria-hidden="true"><div class="bar"><i id="bar"></i></div></div>
+    </div>
+
+    <div class="bets" id="bets">
+      <button class="bet" data-k="lion"><span class="mult">×2</span><span class="who">أسد</span><span class="mine">رهاني</span><span class="amt num" id="amt-lion">0</span></button>
+      <button class="bet" data-k="tie"><span class="mult">×30</span><span class="who">تعادل</span><span class="mine">رهاني</span><span class="amt num" id="amt-tie">0</span></button>
+      <button class="bet" data-k="tiger"><span class="mult">×2</span><span class="who">نمر</span><span class="mine">رهاني</span><span class="amt num" id="amt-tiger">0</span></button>
+    </div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:12px">
+      <div>
+        <div class="label" style="margin-bottom:6px">مبلغ الضغطة الواحدة</div>
+        <div class="chips" id="chips">
+          <button class="chip" data-v="100" aria-pressed="true">100</button>
+          <button class="chip" data-v="500" aria-pressed="false">500</button>
+          <button class="chip" data-v="1000" aria-pressed="false">1000</button>
+          <button class="chip" data-v="5000" aria-pressed="false">5000</button>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="repeat">أعد الرهان السابق</button>
+        <button class="btn" id="clear">مسح الرهانات</button>
+      </div>
+      <div class="msg" id="msg" aria-live="polite">اختر رهانك قبل انتهاء الوقت.</div>
+    </div>
+
+    <div class="card">
+      <div class="stats">
+        <div class="stat"><div class="label">الجولات</div><div class="v" id="s-rounds">0</div></div>
+        <div class="stat"><div class="label">صافي الربح أو الخسارة</div><div class="v" id="s-net"><span class="num">0</span></div></div>
+        <div class="stat"><div class="label">إجمالي المراهنات</div><div class="v"><span class="num" id="s-staked">0</span></div></div>
+      </div>
+      <div class="label" style="margin:14px 0 6px">آخر النتائج (الأحدث أولاً)</div>
+      <div class="history" id="history"></div>
+    </div>
+  </section>
+
+  <!-- SIMULATOR -->
+  <section class="panel" id="panel-sim" role="tabpanel" aria-labelledby="tab-sim" hidden>
+    <div class="card">
+      <h2>اترك البرنامج يلعب بدلاً عنك</h2>
+      <p class="note" style="margin-bottom:14px">اختر طريقة اللعب وعدد الجولات. يلعب البرنامج 200 لاعب افتراضي بنفس الطريقة، ثم تقارن النتائج.</p>
+      <div class="form">
+        <div class="field">
+          <label for="strat" class="label">طريقة اللعب</label>
+          <select id="strat">
+            <option value="lion">أسد فقط</option>
+            <option value="tiger">نمر فقط</option>
+            <option value="both" selected>أسد ونمر معاً</option>
+            <option value="tie">تعادل فقط</option>
+            <option value="all">الخيارات الثلاثة معاً</option>
+            <option value="mart">أسد مع مضاعفة الرهان بعد كل خسارة</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="rounds" class="label">عدد الجولات</label>
+          <input id="rounds" type="number" min="10" max="2000" step="10" value="300">
+        </div>
+        <div class="field">
+          <label for="base" class="label">الرهان الأساسي</label>
+          <input id="base" type="number" min="10" max="2000" step="10" value="100">
+        </div>
+        <button class="btn primary" id="run">شغّل المحاكاة</button>
+      </div>
+    </div>
+
+    <div class="card" id="sim-out">
+      <p class="verdict" id="verdict"></p>
+      <div class="stats" style="margin-top:14px">
+        <div class="stat"><div class="label">متوسط الرصيد النهائي</div><div class="v"><span class="num" id="m-avg">0</span></div></div>
+        <div class="stat"><div class="label">لاعبون خسروا</div><div class="v"><span class="num" id="m-lost">0</span>%</div></div>
+        <div class="stat"><div class="label">لاعبون فقدوا كل رصيدهم</div><div class="v"><span class="num" id="m-bust">0</span>%</div></div>
+        <div class="stat"><div class="label">أفضل نتيجة</div><div class="v"><span class="num" id="m-best">0</span></div></div>
+        <div class="stat"><div class="label">أسوأ نتيجة</div><div class="v"><span class="num" id="m-worst">0</span></div></div>
+        <div class="stat"><div class="label">العائد المتوقع لكل 100 تراهن بها</div><div class="v"><span class="num" id="m-ev">0</span></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-box"><svg class="chart" id="chart" viewBox="0 0 600 280" role="img" aria-label="مسار الرصيد عبر الجولات"></svg></div>
+      <p class="note" style="margin-top:8px">الخطوط الخافتة هي 40 لاعباً افتراضياً. الخط الأصفر السميك هو متوسط الـ 200 لاعب. الخط المتقطع هو الرصيد الابتدائي.</p>
+    </div>
+
+    <p class="note">الاحتمالات المستخدمة هنا هي 48.5% أسد، 48.5% نمر، 3% تعادل. هذه قيم افتراضية للتدريب فقط، ولا أحد يعرف الأرقام الحقيقية للعبة تجارية من الخارج. المبدأ العام ثابت: حين يكون العائد المتوقع سالباً، تنزل الأرصدة مع كثرة الجولات.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  var MULT = { lion: 2, tie: 30, tiger: 2 };
+  var P = { lion: 0.485, tie: 0.03, tiger: 0.485 };
+  var NAME = { lion: 'الأسد', tie: 'تعادل', tiger: 'النمر' };
+  var LETTER = { lion: 'أ', tie: 'ت', tiger: 'ن' };
+  var START = 10000;
+
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
+  function sgn(n) { return (n > 0 ? '+' : n < 0 ? '-' : '') + fmt(Math.abs(n)); }
+
+  /* ---------- fighters: original characters built from simple shapes ---------- */
+  var STAR = 'M0 -7 L2 -2 L7 0 L2 2 L0 7 L-2 2 L-7 0 L-2 -2Z';
+  var INK = '#2a1810';
+
+  function fighterSVG(c) {
+    var s = '<svg viewBox="0 0 200 210" aria-hidden="true">';
+    s += '<ellipse cx="100" cy="201" rx="50" ry="7" fill="#000" opacity=".28"/>';
+    s += '<g class="rig">';
+    // legs and boots
+    s += '<rect x="80" y="152" width="18" height="40" rx="9" fill="' + c.body + '"/>';
+    s += '<rect x="106" y="152" width="18" height="40" rx="9" fill="' + c.body + '"/>';
+    s += '<ellipse cx="92" cy="194" rx="16" ry="8" fill="' + c.boot + '"/>';
+    s += '<ellipse cx="118" cy="194" rx="16" ry="8" fill="' + c.boot + '"/>';
+    // torso
+    s += '<rect x="74" y="98" width="56" height="62" rx="22" fill="' + c.body + '"/>';
+    s += '<ellipse cx="108" cy="130" rx="14" ry="20" fill="' + c.belly + '"/>';
+    if (c.stripe) {
+      s += '<path d="M76 112 l12 4 M76 126 l12 3 M128 112 l-10 4 M128 126 l-10 3" stroke="' + c.stripe + '" stroke-width="4" stroke-linecap="round" fill="none"/>';
+    }
+    // shorts
+    s += '<rect x="74" y="148" width="56" height="28" rx="9" fill="' + c.shorts + '"/>';
+    s += '<rect x="74" y="148" width="56" height="7" rx="3" fill="' + c.band + '"/>';
+    // back arm
+    s += '<g class="arm-b">' + arm(98, 112, 140, c, true) + '</g>';
+    // head
+    s += '<g class="head">';
+    if (c.mane) {
+      for (var i = 0; i < 12; i++) {
+        var a = i / 12 * Math.PI * 2;
+        s += '<circle cx="' + (96 + Math.cos(a) * 33).toFixed(1) + '" cy="' + (62 + Math.sin(a) * 33).toFixed(1) + '" r="14" fill="' + c.mane + '"/>';
+      }
+      s += '<circle cx="96" cy="62" r="34" fill="' + c.mane + '"/>';
+      s += '<circle cx="68" cy="30" r="10" fill="' + c.face + '"/><circle cx="68" cy="30" r="5" fill="' + c.earIn + '"/>';
+      s += '<circle cx="124" cy="30" r="10" fill="' + c.face + '"/><circle cx="124" cy="30" r="5" fill="' + c.earIn + '"/>';
+    } else {
+      s += '<circle cx="70" cy="32" r="13" fill="' + c.ear + '"/><circle cx="70" cy="32" r="6" fill="' + c.earIn + '"/>';
+      s += '<circle cx="122" cy="32" r="13" fill="' + c.ear + '"/><circle cx="122" cy="32" r="6" fill="' + c.earIn + '"/>';
+    }
+    s += '<circle cx="96" cy="62" r="30" fill="' + c.face + '"/>';
+    if (c.stripe) {
+      s += '<path d="M96 33 v11 M86 35 l3 9 M106 35 l-3 9 M68 56 l10 3 M68 67 l10 -2 M124 56 l-10 3 M124 67 l-10 -2" stroke="' + c.stripe + '" stroke-width="4" stroke-linecap="round" fill="none"/>';
+    }
+    s += '<ellipse cx="96" cy="74" rx="16" ry="12" fill="' + c.muzzle + '"/>';
+    s += '<path d="M89 66 h14 l-7 7z" fill="#7a2e3a"/>';
+    // eyes
+    s += '<g class="fx e-n"><circle cx="84" cy="57" r="6" fill="#fff"/><circle cx="108" cy="57" r="6" fill="#fff"/><circle cx="86" cy="58" r="3.2" fill="' + INK + '"/><circle cx="110" cy="58" r="3.2" fill="' + INK + '"/></g>';
+    s += '<g class="fx e-a"><circle cx="84" cy="58" r="5.5" fill="#fff"/><circle cx="108" cy="58" r="5.5" fill="#fff"/><circle cx="86" cy="59" r="3" fill="' + INK + '"/><circle cx="110" cy="59" r="3" fill="' + INK + '"/><path d="M75 47 L91 54 M117 47 L101 54" stroke="' + INK + '" stroke-width="4.5" stroke-linecap="round"/></g>';
+    s += '<g class="fx e-h"><path d="M78 60 q6 -9 12 0 M102 60 q6 -9 12 0" stroke="' + INK + '" stroke-width="3.5" fill="none" stroke-linecap="round"/><circle cx="76" cy="68" r="4" fill="#ff8fa3" opacity=".7"/><circle cx="116" cy="68" r="4" fill="#ff8fa3" opacity=".7"/></g>';
+    s += '<g class="fx e-x"><path d="M79 52 l10 10 M89 52 l-10 10 M103 52 l10 10 M113 52 l-10 10" stroke="' + INK + '" stroke-width="3.5" stroke-linecap="round"/></g>';
+    // mouths
+    s += '<path class="fx m-n" d="M88 80 q8 6 16 0" stroke="' + INK + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    s += '<g class="fx m-a"><rect x="85" y="76" width="22" height="10" rx="3" fill="#fff" stroke="' + INK + '" stroke-width="2.5"/><path d="M91 76 v10 M96 76 v10 M101 76 v10" stroke="' + INK + '" stroke-width="1.5"/></g>';
+    s += '<g class="fx m-h"><path d="M85 76 q11 17 22 0z" fill="#7c2d12"/><ellipse cx="96" cy="85" rx="5" ry="3" fill="#f87171"/></g>';
+    s += '<path class="fx m-x" d="M86 82 q5 -5 10 0 t10 0" stroke="' + INK + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    s += '<path class="swt" d="M134 40 q7 11 0 15 q-7 -4 0 -15z" fill="#7dd3fc"/>';
+    s += '</g>';
+    // front arm
+    s += '<g class="arm-f">' + arm(110, 118, 154, c, false) + '</g>';
+    // effects
+    s += '<g class="spk" fill="#ffe066"><path transform="translate(54 30)" d="' + STAR + '"/><path transform="translate(140 18) scale(1.2)" d="' + STAR + '"/><path transform="translate(150 66) scale(.8)" d="' + STAR + '"/></g>';
+    s += '<g class="diz" fill="#fde68a"><path transform="translate(64 28) scale(.9)" d="' + STAR + '"/><path transform="translate(128 28) scale(.9)" d="' + STAR + '"/><path transform="translate(96 8) scale(.9)" d="' + STAR + '"/></g>';
+    s += '</g></svg>';
+    return s;
+  }
+
+  function arm(ox, oy, gx, c, back) {
+    var skin = back ? c.dark : c.body;
+    var g = '<line x1="' + ox + '" y1="' + oy + '" x2="' + (gx - 8) + '" y2="' + oy + '" stroke="' + skin + '" stroke-width="14" stroke-linecap="round"/>';
+    g += '<circle cx="' + gx + '" cy="' + oy + '" r="16" fill="' + (back ? c.gloveDark : c.glove) + '"/>';
+    g += '<ellipse cx="' + (gx + 2) + '" cy="' + (oy - 10) + '" rx="8" ry="5" fill="' + c.gloveDark + '"/>';
+    g += '<path d="M' + (gx - 11) + ' ' + (oy - 11) + ' q-4 11 0 22" stroke="#fff" stroke-width="3" fill="none" opacity=".75" stroke-linecap="round"/>';
+    return g;
+  }
+
+  $('face-lion').innerHTML = fighterSVG({
+    body: '#e9a23b', dark: '#c9821f', belly: '#f6d28b', face: '#f4bb5e', muzzle: '#fbe1a6',
+    mane: '#9a4f17', earIn: '#9a4f17', stripe: null,
+    shorts: '#7a1f2b', band: '#f2b632', glove: '#d62839', gloveDark: '#a31621', boot: '#3b2a1a'
+  });
+  $('face-tiger').innerHTML = fighterSVG({
+    body: '#f08a2e', dark: '#cf6f17', belly: '#fff1dc', face: '#f6a04d', muzzle: '#fff3e6',
+    mane: null, ear: '#f08a2e', earIn: '#ffd9bd', stripe: '#231a24',
+    shorts: '#1e3a8a', band: '#ffffff', glove: '#12b3a4', gloveDark: '#0b8579', boot: '#1b1b2a'
+  });
+
+  function pose(l, t) { $('f-lion').dataset.s = l; $('f-tiger').dataset.s = t; }
+
+  /* ---------- game state ---------- */
+  var balance = START, chip = 100, phase = 'bet', left = 10, ROUND = 10;
+  var bets = { lion: 0, tie: 0, tiger: 0 };
+  var lastBets = null;
+  var rounds = 0, net = 0, staked = 0, history = [];
+
+  function total(b) { return b.lion + b.tie + b.tiger; }
+  function say(text, cls) { var m = $('msg'); m.textContent = text; m.className = 'msg' + (cls ? ' ' + cls : ''); }
+  function draw() {
+    var r = Math.random();
+    if (r < P.lion) return 'lion';
+    if (r < P.lion + P.tie) return 'tie';
+    return 'tiger';
+  }
+
+  function render() {
+    $('balance').textContent = fmt(balance);
+    ['lion', 'tie', 'tiger'].forEach(function (k) {
+      $('amt-' + k).textContent = fmt(bets[k]);
+      var el = document.querySelector('.bet[data-k="' + k + '"]');
+      el.classList.toggle('has', bets[k] > 0);
+      el.disabled = phase !== 'bet';
+    });
+    $('repeat').disabled = phase !== 'bet' || !lastBets;
+    $('clear').disabled = phase !== 'bet' || total(bets) === 0;
+    $('s-rounds').textContent = fmt(rounds);
+    var n = $('s-net');
+    n.className = 'v ' + (net > 0 ? 'pos' : net < 0 ? 'neg' : '');
+    n.innerHTML = '<span class="num">' + sgn(net) + '</span>';
+    $('s-staked').textContent = fmt(staked);
+    var h = $('history');
+    h.innerHTML = '';
+    history.slice(0, 14).forEach(function (k) {
+      var d = document.createElement('span');
+      d.className = 'dot ' + k;
+      d.title = NAME[k];
+      d.textContent = LETTER[k];
+      h.appendChild(d);
+    });
+    if (!history.length) h.innerHTML = '<span class="note">لا توجد جولات بعد.</span>';
+  }
+
+  document.querySelectorAll('.bet').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (phase !== 'bet') return;
+      if (chip > balance) { say('رصيدك لا يكفي لإضافة ' + fmt(chip) + ' أخرى.', 'bad'); return; }
+      balance -= chip;
+      bets[b.dataset.k] += chip;
+      say('إجمالي رهانك الآن ' + fmt(total(bets)) + '. يمكنك الإضافة قبل انتهاء الوقت.');
+      render();
+    });
+  });
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+      chip = +c.dataset.v;
+      document.querySelectorAll('.chip').forEach(function (x) { x.setAttribute('aria-pressed', x === c ? 'true' : 'false'); });
+    });
+  });
+  $('clear').addEventListener('click', function () {
+    if (phase !== 'bet') return;
+    balance += total(bets);
+    bets = { lion: 0, tie: 0, tiger: 0 };
+    say('تم مسح الرهانات وعاد المبلغ إلى رصيدك.');
+    render();
+  });
+  $('repeat').addEventListener('click', function () {
+    if (!lastBets || phase !== 'bet') return;
+    if (total(lastBets) > balance + total(bets)) { say('رصيدك لا يكفي لإعادة الرهان السابق.', 'bad'); return; }
+    balance += total(bets);
+    bets = { lion: lastBets.lion, tie: lastBets.tie, tiger: lastBets.tiger };
+    balance -= total(bets);
+    say('أعدت الرهان السابق: ' + fmt(total(bets)) + '.');
+    render();
+  });
+  $('reset').addEventListener('click', function () {
+    if (phase !== 'bet') { say('انتظر انتهاء الجولة ثم أعد الرصيد.'); return; }
+    balance = START; bets = { lion: 0, tie: 0, tiger: 0 }; lastBets = null;
+    rounds = 0; net = 0; staked = 0; history = [];
+    say('بدأت من جديد برصيد 10,000.');
+    render();
+  });
+
+  /* ---------- timed rounds: 10 seconds to bet, then the fight and the result ---------- */
+  function setTimer() {
+    $('tnum').textContent = left;
+    $('bar').style.width = (left / ROUND * 100) + '%';
+    $('timer').classList.toggle('low', left <= 3);
+  }
+
+  function startBetting() {
+    phase = 'bet'; left = ROUND;
+    $('arena').className = 'arena';
+    $('result').textContent = '';
+    $('vs').hidden = true; $('vs').textContent = 'VS'; $('timer').hidden = false;
+    pose('idle', 'idle');
+    if (balance < 100) say('رصيدك قليل. اضغط إعادة الرصيد لتجرب من جديد.', 'bad');
+    else say('اختر رهانك قبل انتهاء الوقت.');
+    setTimer();
+    render();
+  }
+
+  function lockAndPlay() {
+    phase = 'fight';
+    var placed = { lion: bets.lion, tie: bets.tie, tiger: bets.tiger };
+    var t = total(placed);
+    bets = { lion: 0, tie: 0, tiger: 0 };
+    if (t > 0) { lastBets = placed; staked += t; }
+    $('timer').hidden = true;
+    $('vs').textContent = 'ضربة!'; $('vs').hidden = false;
+    $('arena').className = 'arena fight';
+    pose('fight', 'fight');
+    say(t > 0 ? 'أُغلق الرهان. المصارعة بدأت...' : 'انتهى الوقت دون رهان. المصارعة بدأت...');
+    render();
+    setTimeout(function () {
+      var out = draw();
+      var payout = placed[out] * MULT[out];
+      balance += payout;
+      history.unshift(out);
+      if (t > 0) { rounds++; net += payout - t; }
+      $('arena').className = 'arena res-' + out;
+      $('vs').hidden = true;
+      $('result').textContent = out === 'tie' ? 'تعادل' : 'فاز ' + NAME[out];
+      pose(out === 'lion' ? 'win' : out === 'tiger' ? 'lose' : 'tie', out === 'tiger' ? 'win' : out === 'lion' ? 'lose' : 'tie');
+      var diff = payout - t;
+      if (t === 0) say('النتيجة: ' + (out === 'tie' ? 'تعادل' : 'فاز ' + NAME[out]) + '. لم تراهن في هذه الجولة.');
+      else if (diff > 0) say('ربحت ' + fmt(diff) + ' في هذه الجولة.', 'good');
+      else if (diff === 0) say('استرددت رهانك بالكامل، لا ربح ولا خسارة.');
+      else say('خسرت ' + fmt(-diff) + ' في هذه الجولة.', 'bad');
+      phase = 'result';
+      render();
+      setTimeout(startBetting, 3200);
+    }, 2200);
+  }
+
+  setInterval(function () {
+    if (phase !== 'bet') return;
+    left--;
+    setTimer();
+    if (left <= 0) lockAndPlay();
+  }, 1000);
+
+  /* ---------- tabs ---------- */
+  function showTab(which) {
+    var play = which === 'play';
+    $('tab-play').setAttribute('aria-selected', play);
+    $('tab-sim').setAttribute('aria-selected', !play);
+    $('panel-play').hidden = !play;
+    $('panel-sim').hidden = play;
+    if (!play && !simDone) runSim();
+  }
+  $('tab-play').addEventListener('click', function () { showTab('play'); });
+  $('tab-sim').addEventListener('click', function () { showTab('sim'); });
+
+  /* ---------- simulator ---------- */
+  var simDone = false;
+  var STRATS = {
+    lion: { lion: 1 }, tiger: { tiger: 1 }, both: { lion: 1, tiger: 1 },
+    tie: { tie: 1 }, all: { lion: 1, tie: 1, tiger: 1 }, mart: { lion: 1 }
+  };
+
+  function evPer100(key) {
+    var s = STRATS[key], stake = 0, ret = 0;
+    Object.keys(s).forEach(function (k) { stake += s[k]; ret += P[k] * MULT[k] * s[k]; });
+    return (ret - stake) / stake * 100;
+  }
+
+  function playPath(key, nRounds, base) {
+    var s = STRATS[key], bal = START, path = [START], mart = base;
+    for (var i = 0; i < nRounds; i++) {
+      if (bal <= 0) { path.push(0); continue; }
+      var unit = key === 'mart' ? Math.min(mart, bal) : base;
+      var sum = 0, k;
+      for (k in s) sum += s[k] * unit;
+      var scale = sum > bal ? bal / sum : 1;
+      var out = draw(), ret = 0;
+      if (s[out]) ret = s[out] * unit * scale * MULT[out];
+      bal = bal - sum * scale + ret;
+      if (key === 'mart') mart = out === 'lion' ? base : mart * 2;
+      path.push(bal);
+    }
+    return path;
+  }
+
+  function runSim() {
+    simDone = true;
+    var key = $('strat').value;
+    var nRounds = Math.max(10, Math.min(2000, +$('rounds').value || 300));
+    var base = Math.max(10, Math.min(2000, +$('base').value || 100));
+    var RUNS = 200, paths = [], i, j;
+    for (i = 0; i < RUNS; i++) paths.push(playPath(key, nRounds, base));
+    var avg = [];
+    for (j = 0; j <= nRounds; j++) {
+      var s = 0;
+      for (i = 0; i < RUNS; i++) s += paths[i][j];
+      avg.push(s / RUNS);
+    }
+    var finals = paths.map(function (p) { return p[nRounds]; });
+    var lost = finals.filter(function (v) { return v < START; }).length;
+    var bust = finals.filter(function (v) { return v < 1; }).length;
+    var best = Math.max.apply(null, finals), worst = Math.min.apply(null, finals);
+    var avgF = avg[nRounds];
+    $('m-avg').textContent = fmt(avgF);
+    $('m-lost').textContent = fmt(lost / RUNS * 100);
+    $('m-bust').textContent = fmt(bust / RUNS * 100);
+    $('m-best').textContent = fmt(best);
+    $('m-worst').textContent = fmt(worst);
+    var ev = evPer100(key);
+    $('m-ev').textContent = (ev >= 0 ? '+' : '-') + Math.abs(ev).toFixed(1);
+    var pct = Math.round(avgF / START * 100);
+    $('verdict').textContent = avgF < START
+      ? 'بعد ' + fmt(nRounds) + ' جولة، انتهى اللاعب العادي بنحو ' + fmt(avgF) + '، أي ' + pct + '% من رصيده الابتدائي. خسر ' + fmt(lost / RUNS * 100) + '% من اللاعبين.'
+      : 'في هذه التجربة حقق اللاعب العادي ' + fmt(avgF) + '، أي ' + pct + '% من رصيده الابتدائي. جرّب رفع عدد الجولات لترى هل يستمر ذلك.';
+    drawChart(paths, avg, nRounds);
+  }
+
+  function drawChart(paths, avg, n) {
+    var W = 600, H = 280, L = 62, R = 14, T = 14, B = 30;
+    var shown = paths.slice(0, 40), maxV = START * 1.5;
+    shown.forEach(function (p) { p.forEach(function (v) { if (v > maxV) maxV = v; }); });
+    avg.forEach(function (v) { if (v > maxV) maxV = v; });
+    function X(i) { return L + i / n * (W - L - R); }
+    function Y(v) { return T + (1 - v / maxV) * (H - T - B); }
+    function line(p) {
+      var step = Math.max(1, Math.floor(n / 300)), pts = [];
+      for (var i = 0; i <= n; i += step) pts.push(X(i).toFixed(1) + ',' + Y(p[i]).toFixed(1));
+      if ((n % step) !== 0) pts.push(X(n).toFixed(1) + ',' + Y(p[n]).toFixed(1));
+      return pts.join(' ');
+    }
+    var g = '';
+    [0, START, maxV].forEach(function (v, idx) {
+      g += '<line class="' + (idx === 1 ? 'start' : 'grid') + '" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/>';
+      g += '<text x="' + (L - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end">' + fmt(v) + '</text>';
+    });
+    shown.forEach(function (p) { g += '<polyline class="run" points="' + line(p) + '"/>'; });
+    g += '<polyline class="avg" points="' + line(avg) + '"/>';
+    g += '<text x="' + L + '" y="' + (H - 8) + '" text-anchor="start">0</text>';
+    g += '<text x="' + (W - R) + '" y="' + (H - 8) + '" text-anchor="end">' + fmt(n) + ' جولة</text>';
+    $('chart').innerHTML = g;
+  }
+
+  $('run').addEventListener('click', runSim);
+  ['strat', 'rounds', 'base'].forEach(function (id) { $(id).addEventListener('change', runSim); });
+
+  startBetting();
+})();
+</script>
+
+</body>
+</html>
